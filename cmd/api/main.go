@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/helmet/v2"
+	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	_ "github.com/sizzlorox/go-service-boilerplate/internal/docs"
 	"github.com/sizzlorox/go-service-boilerplate/internal/utils"
@@ -26,6 +28,16 @@ import (
 	"github.com/sizzlorox/go-service-boilerplate/internal/v1/services"
 )
 
+type Config struct {
+	SERVICE_NAME string
+	DB_URI       string
+	DB_PWD       string
+	LOGGING      bool
+	CACHE        bool
+}
+
+var config Config
+
 // @title Go Service Boilerplate
 // @version 1.0
 // @description This is a go service boilerplate
@@ -34,6 +46,19 @@ import (
 // @BasePath /
 func main() {
 	// TODO: Load config file here
+	err := godotenv.Load()
+	if err != nil {
+		log.Panic(err)
+	}
+	logEnabled, err := strconv.ParseBool(os.Getenv("LOGGING"))
+	cachEnabled, err := strconv.ParseBool(os.Getenv("CACHE"))
+	config = Config{
+		SERVICE_NAME: os.Getenv("SERVICE_NAME"),
+		DB_URI:       os.Getenv("DB_URI"),
+		DB_PWD:       os.Getenv("DB_PWD"),
+		LOGGING:      logEnabled,
+		CACHE:        cachEnabled,
+	}
 
 	// TODO: check for prefork
 	if fiber.IsChild() {
@@ -45,7 +70,7 @@ func main() {
 	// TODO: Move prefork to config
 	app := fiber.New(fiber.Config{
 		Prefork:      true,
-		ServerHeader: "Service Name",
+		ServerHeader: config.SERVICE_NAME,
 		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			if e, ok := err.(*fiber.Error); ok {
@@ -66,8 +91,8 @@ func main() {
 
 	// Initialize Datastore
 	dsConfig := datastore.Config{
-		Uri:          "mongodb://gs_user:gs_pwd@localhost:27017/gs_service",
-		DatabaseName: "gs_service",
+		Uri:          config.DB_URI,
+		DatabaseName: config.SERVICE_NAME,
 	}
 	ds := datastore.NewDatastore(&dsConfig)
 	ds.EnsureIndexes("models", []string{"email"})
@@ -121,21 +146,26 @@ func loadMiddlewares(app *fiber.App) {
 	app.Use(requestid.New())
 	// TODO: Check for prod env, this can only activate in a dev env
 	app.Use(pprof.New())
-	app.Use(cache.New(cache.Config{
-		Next: func(c *fiber.Ctx) bool {
-			return c.Query("refresh") == "true"
-		},
-		Expiration:   1 * time.Minute,
-		CacheControl: true,
-	}))
-	app.Use(logger.New(logger.Config{
-		Next:         nil,
-		Format:       "[${time}] ${status} - ${latency} ${method} ${path}\n",
-		TimeFormat:   "15:04:05",
-		TimeZone:     "Local",
-		TimeInterval: 500 * time.Millisecond,
-		Output:       log.StandardLogger().Out,
-	}))
+	if config.CACHE {
+		app.Use(cache.New(cache.Config{
+			Next: func(c *fiber.Ctx) bool {
+				return c.Query("refresh") == "true"
+			},
+			Expiration:   1 * time.Minute,
+			CacheControl: true,
+		}))
+
+	}
+	if config.LOGGING {
+		app.Use(logger.New(logger.Config{
+			Next:         nil,
+			Format:       "[${time}] ${status} - ${latency} ${method} ${path}\n",
+			TimeFormat:   "15:04:05",
+			TimeZone:     "Local",
+			TimeInterval: 500 * time.Millisecond,
+			Output:       log.StandardLogger().Out,
+		}))
+	}
 	app.Use(compress.New(compress.Config{
 		Next: func(c *fiber.Ctx) bool {
 			return c.Path() == "/dont_compress"
