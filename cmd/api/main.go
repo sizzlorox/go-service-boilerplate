@@ -18,12 +18,12 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/gofiber/helmet/v2"
 	log "github.com/sirupsen/logrus"
-	_ "gitlab.com/PROD/go-service-boilerplate/internal/docs"
-	"gitlab.com/PROD/go-service-boilerplate/internal/utils"
+	_ "github.com/sizzlorox/go-service-boilerplate/internal/docs"
+	"github.com/sizzlorox/go-service-boilerplate/internal/utils"
 
-	"gitlab.com/PROD/go-service-boilerplate/internal/datastore"
-	"gitlab.com/PROD/go-service-boilerplate/internal/v1/controllers"
-	"gitlab.com/PROD/go-service-boilerplate/internal/v1/services"
+	"github.com/sizzlorox/go-service-boilerplate/internal/datastore"
+	"github.com/sizzlorox/go-service-boilerplate/internal/v1/controllers"
+	"github.com/sizzlorox/go-service-boilerplate/internal/v1/services"
 )
 
 // @title Go Service Boilerplate

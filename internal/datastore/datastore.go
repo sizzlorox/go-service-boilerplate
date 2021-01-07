@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 
-	"gitlab.com/PROD/go-service-boilerplate/internal/v1/models"
+	"github.com/sizzlorox/go-service-boilerplate/internal/v1/models"
 )
 
 type Repository interface {

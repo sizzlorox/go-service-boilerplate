@@ -10,9 +10,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
-	"gitlab.com/PROD/go-service-boilerplate/internal/datastore"
-	"gitlab.com/PROD/go-service-boilerplate/internal/utils"
-	"gitlab.com/PROD/go-service-boilerplate/internal/v1/models"
+	"github.com/sizzlorox/go-service-boilerplate/internal/datastore"
+	"github.com/sizzlorox/go-service-boilerplate/internal/utils"
+	"github.com/sizzlorox/go-service-boilerplate/internal/v1/models"
 )
 
 type Service interface {

@@ -4,8 +4,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
 
-	"gitlab.com/PROD/go-service-boilerplate/internal/v1/models"
-	"gitlab.com/PROD/go-service-boilerplate/internal/v1/services"
+	"github.com/sizzlorox/go-service-boilerplate/internal/v1/models"
+	"github.com/sizzlorox/go-service-boilerplate/internal/v1/services"
 )
 
 type Controller interface {
