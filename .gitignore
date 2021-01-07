@@ -1,0 +1,8 @@
+.vscode
+__debug_bin
+
+.env
+vendor/
+*.log
+mongo-volume/
+internal/docs/
