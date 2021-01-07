@@ -33,6 +33,8 @@ import (
 // @host localhost:8080
 // @BasePath /
 func main() {
+	// TODO: Load config file here
+
 	// TODO: check for prefork
 	if fiber.IsChild() {
 		log.Infof("[%d] Child", os.Getppid())

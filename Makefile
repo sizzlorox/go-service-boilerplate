@@ -1,11 +1,15 @@
+#!make
+
 SHELL := /bin/sh
 GOPATH := $(shell go env GOPATH)
-
 GITROOT := $(shell git rev-parse --show-toplevel)
+
+include $(GITROOT)/.env
+export
 
 .PHONY: start-dev
 start-dev: ## Starts up a mongodb instance
-	docker-compose up -d
+	docker-compose --env-file=$(GITROOT)/.env up -d
 
 .PHONY: stop
 stop: ## Stops

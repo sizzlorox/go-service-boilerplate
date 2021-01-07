@@ -1,4 +1,4 @@
-module gitlab.com/PROD/go-service-boilerplate
+module github.com/sizzlorox/go-service-boilerplate
 
 go 1.14
 
