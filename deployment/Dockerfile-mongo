@@ -1,0 +1,7 @@
+FROM mongo:latest
+
+RUN mkdir /home/mongodb && \
+	echo "" > /home/mongodb/.dbshell && \
+	chown -R mongodb:mongodb /home/mongodb/.dbshell
+
+EXPOSE 27017

@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -51,13 +52,14 @@ type datastore struct {
 
 // NewDatastore Will initialize a new datastore which contains the client connection
 func NewDatastore(config *Config) Repository {
-	client, err := mongo.NewClient(options.Client().ApplyURI(config.Uri))
+	client, err := mongo.NewClient(options.Client().ApplyURI(fmt.Sprintf("%s/%s", config.Uri, config.DatabaseName)))
 	if err != nil {
 		log.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	log.Infof("Connecting to %s", config.Uri)
 	err = client.Connect(ctx)
 	db := client.Database(config.DatabaseName)
 	if err != nil {
