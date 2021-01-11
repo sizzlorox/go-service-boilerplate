@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -29,11 +30,14 @@ import (
 )
 
 type Config struct {
+	SERVICE_ENV  string
 	SERVICE_NAME string
+	SERVICE_PORT int
 	DB_URI       string
 	DB_PWD       string
 	LOGGING      bool
 	CACHE        bool
+	PREFORK      bool
 }
 
 var config Config
@@ -45,31 +49,50 @@ var config Config
 // @host localhost:8080
 // @BasePath /
 func main() {
-	// TODO: Load config file here
-	err := godotenv.Load()
+	// Load Config
+	err := godotenv.Load("../../config/.env")
+	if err != nil {
+		log.Panic(err)
+	}
+
+	// Parse Environment Variables
+	port, err := strconv.Atoi(os.Getenv("SERVICE_PORT"))
 	if err != nil {
 		log.Panic(err)
 	}
 	logEnabled, err := strconv.ParseBool(os.Getenv("LOGGING"))
+	if err != nil {
+		log.Panic(err)
+	}
 	cachEnabled, err := strconv.ParseBool(os.Getenv("CACHE"))
+	if err != nil {
+		log.Panic(err)
+	}
+	preforkEnabled, err := strconv.ParseBool(os.Getenv("PREFORK"))
+	if err != nil {
+		log.Panic(err)
+	}
+
 	config = Config{
+		SERVICE_ENV:  os.Getenv("SERVICE_ENV"),
 		SERVICE_NAME: os.Getenv("SERVICE_NAME"),
+		SERVICE_PORT: port,
 		DB_URI:       os.Getenv("DB_URI"),
 		DB_PWD:       os.Getenv("DB_PWD"),
 		LOGGING:      logEnabled,
 		CACHE:        cachEnabled,
+		PREFORK:      preforkEnabled,
 	}
 
-	// TODO: check for prefork
 	if fiber.IsChild() {
 		log.Infof("[%d] Child", os.Getppid())
 	} else {
 		log.Infof("[%d] Master", os.Getppid())
 	}
 
-	// TODO: Move prefork to config
+	// New fiber instance
 	app := fiber.New(fiber.Config{
-		Prefork:      true,
+		Prefork:      config.PREFORK,
 		ServerHeader: config.SERVICE_NAME,
 		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
@@ -111,14 +134,14 @@ func main() {
 	v1.Get("/:id", c.GetById)
 	v1.Post("/create", c.Create)
 	v1.Put("/:id/update", c.Update)
-	v1.Delete("/delete/:id", c.Delete)
+	v1.Delete("/:id/delete", c.Delete)
 
 	// Exposes swagger docs in /swagger/index.html
 	app.Get("/swagger/*", swagger.Handler)
 
 	// Start Server
 	go func() {
-		err := app.Listen(":3500")
+		err := app.Listen(fmt.Sprintf(":%d", config.SERVICE_PORT))
 		if err != nil {
 			log.Panic(err)
 		}
@@ -144,8 +167,9 @@ func loadMiddlewares(app *fiber.App) {
 	app.Use(helmet.New())
 	app.Use(etag.New())
 	app.Use(requestid.New())
-	// TODO: Check for prod env, this can only activate in a dev env
-	app.Use(pprof.New())
+	if config.SERVICE_ENV == "productionb" {
+		app.Use(pprof.New())
+	}
 	if config.CACHE {
 		app.Use(cache.New(cache.Config{
 			Next: func(c *fiber.Ctx) bool {

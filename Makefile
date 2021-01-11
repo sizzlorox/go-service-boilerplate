@@ -4,7 +4,7 @@ SHELL := /bin/sh
 GOPATH := $(shell go env GOPATH)
 GITROOT := $(shell git rev-parse --show-toplevel)
 
-include $(GITROOT)/.env
+include $(GITROOT)/config/.env
 export
 
 .PHONY: start-dev
