@@ -16,9 +16,9 @@ import (
 )
 
 type Service interface {
-	Get(page string, limit string) (*ServiceResponse, error)
+	Get(page string, limit string) (resp ServiceResponse, err error)
 	GetById(id string) (*ServiceResponse, error)
-	Create(data *models.Model) (*ServiceResponse, error)
+	Create(data *models.Model) (resp ServiceResponse, err error)
 	Update(id string, data *models.Model) (*ServiceResponse, error)
 	Delete(id string) (*ServiceResponse, error)
 }
@@ -65,14 +65,14 @@ func (s *service) mapPayload(res interface{}, response interface{}) error {
 * PUBLIC
  */
 
-func (s *service) Get(page string, limit string) (*ServiceResponse, error) {
+func (s *service) Get(page string, limit string) (resp ServiceResponse, err error) {
 	// Build Query
 	q := datastore.Query{From: "models"}
 
 	// Convert params
 	p, err := strconv.Atoi(page)
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 
 	// Validate Optional & Default params
@@ -80,7 +80,7 @@ func (s *service) Get(page string, limit string) (*ServiceResponse, error) {
 	if len(limit) != 0 {
 		l, err = strconv.Atoi(limit)
 		if err != nil {
-			return nil, err
+			return resp, err
 		}
 	}
 
@@ -94,14 +94,15 @@ func (s *service) Get(page string, limit string) (*ServiceResponse, error) {
 	// Datastore operation
 	res, err := s.r.Paginate(q, pOpts)
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 
-	return &ServiceResponse{
+	resp = ServiceResponse{
 		Status:  fiber.StatusOK,
 		Message: "Get Models Successful",
 		Data:    res,
-	}, err
+	}
+	return resp, err
 }
 
 func (s *service) GetById(id string) (*ServiceResponse, error) {
@@ -133,7 +134,7 @@ func (s *service) GetById(id string) (*ServiceResponse, error) {
 	}, err
 }
 
-func (s *service) Create(data *models.Model) (*ServiceResponse, error) {
+func (s *service) Create(data *models.Model) (resp ServiceResponse, err error) {
 	// Build Query
 	query := datastore.Query{
 		From: "models",
@@ -146,21 +147,22 @@ func (s *service) Create(data *models.Model) (*ServiceResponse, error) {
 	res, err := s.r.Insert(query, data)
 	if err != nil {
 		err = s.u.ErrorWrapper(err)
-		return nil, err
+		return resp, err
 	}
 
 	// Mapping Payload
 	var payload models.CreateResponse
 	err = s.mapPayload(res, &payload)
 	if err != nil {
-		return nil, fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		return resp, fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	return &ServiceResponse{
+	resp = ServiceResponse{
 		Status:  fiber.StatusCreated,
 		Message: "Created Model Successfully",
 		Data:    payload,
-	}, err
+	}
+	return resp, err
 }
 
 func (s *service) Update(id string, data *models.Model) (*ServiceResponse, error) {

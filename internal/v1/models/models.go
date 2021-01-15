@@ -24,7 +24,7 @@ type ValidationError struct {
 
 type Model struct {
 	ID        string    `json:"id,omitempty" bson:"_id,omitempty" example:"5ff3fc0e00acd4328da25d92"`
-	Name      string    `json:"name" bson:"name,omitempty" example:"Bob"`
+	Name      string    `json:"name" bson:"name,omitempty" validate:"required" example:"Bob"`
 	Email     string    `json:"email" bson:"email,omitempty" validate:"required,email" example:"bob@bob.com"`
 	CreatedAt time.Time `json:"createdAt" bson:"created_at"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updated_at"`

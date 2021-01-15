@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"regexp"
 	"strconv"
 	"syscall"
 	"time"
@@ -49,8 +50,18 @@ var config Config
 // @host localhost:8080
 // @BasePath /
 func main() {
+	ENV := os.Getenv("SERVICE_ENV")
+
+	// Load dotenv path
+	var dotEnvPath string
+	if ENV == "production" {
+		dotEnvPath = "../../config/.env"
+	} else {
+		dotEnvPath = "../../config/.env-dev"
+	}
+
 	// Load Config
-	err := godotenv.Load("../../config/.env")
+	err := godotenv.Load(dotEnvPath)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -90,54 +101,20 @@ func main() {
 		log.Infof("[%d] Master", os.Getppid())
 	}
 
-	// New fiber instance
-	app := fiber.New(fiber.Config{
-		Prefork:      config.PREFORK,
-		ServerHeader: config.SERVICE_NAME,
-		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
-			code := fiber.StatusInternalServerError
-			if e, ok := err.(*fiber.Error); ok {
-				code = e.Code
-			}
-
-			err = ctx.Status(code).JSON(err)
-			if err != nil {
-				return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-			}
-
-			return nil
-		},
-	})
-
-	// Load Middlewares
-	loadMiddlewares(app)
-
 	// Initialize Datastore
 	dsConfig := datastore.Config{
 		Uri:          config.DB_URI,
 		DatabaseName: config.SERVICE_NAME,
 	}
 	ds := datastore.NewDatastore(&dsConfig)
+	// CHANGE: Update indexes here ????
 	ds.EnsureIndexes("models", []string{"email"})
 
-	// Initialize Utils
-	u := utils.NewUtils()
+	// Initialize Fiber App
+	app := initializeApp(ds)
 
-	// Initialize Service and Controller
-	s := services.NewService(ds, u)
-	c := controllers.NewController(s)
-
-	// Register Routes and Handlers
-	api := app.Group("/api")
-	v1 := api.Group("/v1")
-	v1.Get("/", c.Get)
-	v1.Get("/:id", c.GetById)
-	v1.Post("/create", c.Create)
-	v1.Put("/:id/update", c.Update)
-	v1.Delete("/:id/delete", c.Delete)
-
-	// Exposes swagger docs in /swagger/index.html
-	app.Get("/swagger/*", swagger.Handler)
+	// Load Middlewares
+	loadMiddlewares(app)
 
 	// Start Server
 	go func() {
@@ -159,6 +136,46 @@ func main() {
 
 	log.Info("Cleaning up modules...")
 	ds.Close()
+}
+
+func initializeApp(ds datastore.Repository) *fiber.App {
+	// New fiber instance
+	app := fiber.New(fiber.Config{
+		Prefork:      config.PREFORK,
+		ServerHeader: config.SERVICE_NAME,
+		ErrorHandler: func(ctx *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+
+			err = ctx.Status(code).JSON(err)
+			if err != nil {
+				return ctx.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+			}
+
+			return nil
+		},
+	})
+
+	// Initialize Utils
+	u := utils.NewUtils()
+
+	// Initialize Service and Controller
+	s := services.NewService(ds, u)
+	c := controllers.NewController(s)
+
+	// Register Routes and Handlers
+	api := app.Group("/api")
+	v1 := api.Group("/v1")
+	v1.Get("/", c.Get)
+	v1.Get("/:id", c.GetById)
+	v1.Post("/create", c.Create)
+	v1.Put("/:id/update", c.Update)
+	v1.Delete("/:id/delete", c.Delete)
+
+	// Exposes swagger docs in /swagger/index.html
+	app.Get("/swagger/*", swagger.Handler)
 }
 
 func loadMiddlewares(app *fiber.App) {
@@ -192,7 +209,8 @@ func loadMiddlewares(app *fiber.App) {
 	}
 	app.Use(compress.New(compress.Config{
 		Next: func(c *fiber.Ctx) bool {
-			return c.Path() == "/dont_compress"
+			re := regexp.MustCompile(`swagger`)
+			return c.Path() == "/dont_compress" || re.Match([]byte(c.Path()))
 		},
 		Level: compress.LevelBestSpeed,
 	}))
