@@ -23,11 +23,9 @@ import (
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 	_ "github.com/sizzlorox/go-service-boilerplate/internal/docs"
-	"github.com/sizzlorox/go-service-boilerplate/internal/utils"
 
 	"github.com/sizzlorox/go-service-boilerplate/internal/datastore"
-	"github.com/sizzlorox/go-service-boilerplate/internal/v1/controllers"
-	"github.com/sizzlorox/go-service-boilerplate/internal/v1/services"
+	"github.com/sizzlorox/go-service-boilerplate/internal/v1/router"
 )
 
 type Config struct {
@@ -111,7 +109,11 @@ func main() {
 	ds.EnsureIndexes("models", []string{"email"})
 
 	// Initialize Fiber App
-	app := initializeApp(ds)
+	app := initializeApp()
+
+	// Load Routes
+	api := app.Group("/api")
+	router.LoadRoutes(api, ds)
 
 	// Load Middlewares
 	loadMiddlewares(app)
@@ -138,7 +140,7 @@ func main() {
 	ds.Close()
 }
 
-func initializeApp(ds datastore.Repository) *fiber.App {
+func initializeApp() *fiber.App {
 	// New fiber instance
 	app := fiber.New(fiber.Config{
 		Prefork:      config.PREFORK,
@@ -158,24 +160,10 @@ func initializeApp(ds datastore.Repository) *fiber.App {
 		},
 	})
 
-	// Initialize Utils
-	u := utils.NewUtils()
-
-	// Initialize Service and Controller
-	s := services.NewService(ds, u)
-	c := controllers.NewController(s)
-
-	// Register Routes and Handlers
-	api := app.Group("/api")
-	v1 := api.Group("/v1")
-	v1.Get("/", c.Get)
-	v1.Get("/:id", c.GetById)
-	v1.Post("/create", c.Create)
-	v1.Put("/:id/update", c.Update)
-	v1.Delete("/:id/delete", c.Delete)
-
 	// Exposes swagger docs in /swagger/index.html
 	app.Get("/swagger/*", swagger.Handler)
+
+	return app
 }
 
 func loadMiddlewares(app *fiber.App) {
