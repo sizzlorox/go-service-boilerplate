@@ -19,7 +19,7 @@ type Service interface {
 	Get(page string, limit string) (resp ServiceResponse, err error)
 	GetById(id string) (*ServiceResponse, error)
 	Create(data *models.Model) (resp ServiceResponse, err error)
-	Update(id string, data *models.Model) (*ServiceResponse, error)
+	Update(id string, data *models.Model) (resp ServiceResponse, err error)
 	Delete(id string) (*ServiceResponse, error)
 }
 
@@ -165,10 +165,10 @@ func (s *service) Create(data *models.Model) (resp ServiceResponse, err error) {
 	return resp, err
 }
 
-func (s *service) Update(id string, data *models.Model) (*ServiceResponse, error) {
+func (s *service) Update(id string, data *models.Model) (resp ServiceResponse, err error) {
 	objectId, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 
 	// Build Query
@@ -184,13 +184,14 @@ func (s *service) Update(id string, data *models.Model) (*ServiceResponse, error
 	_, err = s.r.Update(query, bson.M{"$set": data})
 	if err != nil {
 		err = s.u.ErrorWrapper(err)
-		return nil, err
+		return resp, err
 	}
 
-	return &ServiceResponse{
+	resp = ServiceResponse{
 		Status:  fiber.StatusOK,
 		Message: "Update Successful",
-	}, err
+	}
+	return resp, err
 }
 
 func (s *service) Delete(id string) (*ServiceResponse, error) {

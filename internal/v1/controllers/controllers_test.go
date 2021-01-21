@@ -27,10 +27,20 @@ type MockService struct {
 /*
 	MOCKS
 */
+// TODO: Maybe move somewhere else or smthing?
 func (m *MockService) Create(model *models.Model) (services.ServiceResponse, error) {
 	args := m.Called(model)
 	return args.Get(0).(services.ServiceResponse), args.Error(1)
 }
+
+func (m *MockService) Update(id string, model *models.Model) (services.ServiceResponse, error) {
+	args := m.Called(id, model)
+	return args.Get(0).(services.ServiceResponse), args.Error(1)
+}
+
+/*
+	TESTS
+*/
 
 func (suite *ControllerSuite) SetupTest() {}
 
@@ -118,7 +128,88 @@ func (suite *ControllerSuite) TestCreate() {
 		contentBuffer := bytes.NewBuffer(jsonBytes)
 
 		// Setup Request
-		req, _ := http.NewRequest("POST", "/api/v1/create", contentBuffer)
+		req, _ := http.NewRequest("POST", test.route, contentBuffer)
+		req.Header.Set("Content-Type", "application/json")
+
+		res, err := app.Test(req, -1)
+
+		// Asserts
+		assert.Equal(t, test.expectedCode, res.StatusCode, test.description)
+		body, err := ioutil.ReadAll(res.Body)
+
+		// Reading the response body should work everytime, such that
+		// the err variable should be nil
+		assert.Nilf(t, err, test.description)
+		assert.Equalf(t, test.expectedBody, string(body), test.description)
+	}
+}
+
+func (suite *ControllerSuite) TestUpdate() {
+	t := suite.T()
+
+	tests := []struct {
+		description string
+
+		// Test input
+		route          string
+		payload        models.Model
+		mockedResponse services.ServiceResponse
+
+		// Expected output
+		expectedError bool
+		expectedCode  int
+		expectedBody  string
+	}{
+		{
+			description: "[Update] Success",
+			route:       "/api/v1/mockid/update",
+			payload: models.Model{
+				Name:  "test",
+				Email: "test@test.com",
+			},
+			mockedResponse: services.ServiceResponse{
+				Status:  fiber.StatusOK,
+				Message: "Update Successful",
+			},
+			expectedError: false,
+			expectedCode:  fiber.StatusOK,
+			expectedBody:  "{\"Status\":200,\"message\":\"Update Successful\"}",
+		},
+		{
+			description:    "[Update] Empty Payload",
+			route:          "/api/v1/mockid/update",
+			payload:        models.Model{},
+			mockedResponse: services.ServiceResponse{}, // We wont reach this point in this test case
+			expectedError:  true,
+			expectedCode:   fiber.StatusBadRequest,
+			expectedBody:   "You require at least one field to update",
+		},
+	}
+
+	// create an instance of our test object
+	mockService := new(MockService)
+
+	// Initialize stuff
+	controller := NewController(mockService)
+
+	app := fiber.New()
+	api := app.Group("/api")
+	v1 := api.Group("/v1")
+	v1.Post("/:id/update", controller.Update)
+
+	for _, test := range tests {
+		// Mock Service call
+		mockService.On("Update", "mockid", &test.payload).Return(test.mockedResponse, nil)
+
+		// Setup Payload
+		jsonBytes, err := json.Marshal(test.payload)
+		if err != nil {
+			assert.Nil(t, err)
+		}
+		contentBuffer := bytes.NewBuffer(jsonBytes)
+
+		// Setup Request
+		req, _ := http.NewRequest("POST", test.route, contentBuffer)
 		req.Header.Set("Content-Type", "application/json")
 
 		res, err := app.Test(req, -1)
